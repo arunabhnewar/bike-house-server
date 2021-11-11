@@ -4,6 +4,7 @@ const cors = require('cors');
 const app = express();
 // const admin = require("firebase-admin");
 require('dotenv').config();
+const ObjectId = require('mongodb').ObjectId;
 
 // port
 const port = process.env.PORT || 5000;
@@ -68,6 +69,7 @@ async function run() {
             const result = await purchaseCollection.insertOne(purchase);
             res.send(result);
         })
+
         // GET Purchase API
         app.get('/purchases', async (req, res) => {
             const cursor = purchaseCollection.find({});
@@ -76,6 +78,35 @@ async function run() {
             res.send(purchase);
         })
 
+        // GET EMAIL API
+        app.get('/purchases/:email', async (req, res) => {
+            const email = req.params.email;
+            const result = await purchaseCollection.find({ email }).toArray();
+            res.json(result);
+        })
+
+        // GET Purchase Confirmation
+        app.put('/purchases/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: ObjectId(id) }
+            const manage = {
+                $set: {
+                    status: 'Confirm'
+                }
+            }
+            const result = await purchaseCollection.updateOne(query, manage)
+            res.json(result)
+        })
+
+        // Add Users
+        app.post('/users', async (req, res) => {
+            const user = req.body;
+            const result = await userCollection.insertOne(user);
+            res.json(result)
+        });
+
+
+        // GET Admin API
         app.get('/users/:email', async (req, res) => {
             const email = req.params.email;
             const query = { email: email };
@@ -87,43 +118,24 @@ async function run() {
             res.json({ admin: isAdmin });
         })
 
-        // Add Users
-        app.post('/users', async (req, res) => {
-            const user = req.body;
-            const result = await userCollection.insertOne(user);
-            res.json(result)
-        });
 
-        app.put('/users', async (req, res) => {
+        app.put('/users/admin', async (req, res) => {
             const user = req.body;
-            const filter = { email: user.email };
-            const options = { upsert: true };
-            const updateDoc = { $set: user };
-            const result = await userCollection.updateOne(filter, updateDoc, options);
-            res.json(result);
-        });
-
-        // GET EMAIL API
-        app.get('/purchase/:email', async (req, res) => {
-            const email = req.params.email;
-            const result = await purchaseCollection.find({ email }).toArray();
-            res.json(result);
+            console.log(user)
+            const filter = { email: user?.email };
+            const updateDoc = { $set: { role: 'admin' } };
+            const result = await userCollection.updateOne(filter, updateDoc);
+            res.send(result);
         })
 
-        app.put('users/admin', async (req, res) => {
-            const user = req.body;
-            const requester = req.decodedEmail;
-            if (requester) {
-                const requesterAccount = await userCollection.findOne({ email: requester });
-                if (requesterAccount.role === 'admin') {
-                    const filter = { email: user.email };
-                    const updateDoc = { $set: { role: 'admin' } };
-                    const result = await userCollection.updateOne(filter, updateDoc);
-                    res.json(result);
-                }
-            } else {
-                res.status(403).json({ message: 'you do not have access to make admin' })
-            }
+
+        // DELETE Purchase API
+        app.delete('/purchases/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: ObjectId(id) };
+            const result = await purchaseCollection.deleteOne(query);
+            console.log(result);
+            res.send(result);
         })
 
     }
