@@ -2,18 +2,12 @@ const express = require('express');
 const { MongoClient } = require('mongodb');
 const cors = require('cors');
 const app = express();
-// const admin = require("firebase-admin");
 require('dotenv').config();
 const ObjectId = require('mongodb').ObjectId;
 
 // port
 const port = process.env.PORT || 5000;
 
-// const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-
-// admin.initializeApp({
-//     credential: admin.credential.cert(serviceAccount)
-// });
 
 // middleware
 app.use(cors());
@@ -25,21 +19,6 @@ const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
 
 
-// async function verifyToken(req, res, next) {
-//     if (req?.headers?.authorization?.startsWith(`Bearer `)) {
-//         const token = req.headers.authorization.split(' ')[1];
-
-//         try {
-//             const decodedUser = await admin.auth().verifyIdToken(token);
-//             req.decodedEmail = decodedUser.email;
-
-//         } catch {
-
-//         }
-//     }
-//     next();
-// }
-
 
 async function run() {
     try {
@@ -48,6 +27,7 @@ async function run() {
         const productCollection = database.collection('products');
         const purchaseCollection = database.collection('purchases');
         const userCollection = database.collection('users');
+        const reviewCollection = database.collection('reviews');
 
         // GET API
         app.get('/products', async (req, res) => {
@@ -118,7 +98,6 @@ async function run() {
             res.json({ admin: isAdmin });
         })
 
-
         app.put('/users/admin', async (req, res) => {
             const user = req.body;
             console.log(user)
@@ -127,7 +106,19 @@ async function run() {
             const result = await userCollection.updateOne(filter, updateDoc);
             res.send(result);
         })
+        //GET Review API
+        app.get('/reviews', async (req, res) => {
+            const cursor = reviewCollection.find({})
+            const review = await cursor.toArray()
+            res.json(review)
+        })
 
+        //Add NEW Review
+        app.post("/reviews", async (req, res) => {
+            const cursor = req.body;
+            const review = await reviewCollection.insertOne(cursor);
+            res.send(review);
+        });
 
         // DELETE Purchase API
         app.delete('/purchases/:id', async (req, res) => {
